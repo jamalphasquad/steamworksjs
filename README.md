@@ -1,7 +1,6 @@
 # Steamworksjs
 
-Fork of: https://github.com/ceifa/steamworks.js
-A modern implementation of the Steamworks SDK for HTML/JS and NodeJS based applications.
+A Fork of: https://github.com/ceifa/steamworks.js
 
 ## API
 
