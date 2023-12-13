@@ -1,24 +1,6 @@
-[![Build Status](https://github.com/ceifa/steamworks.js/actions/workflows/publish.yml/badge.svg)](https://github.com/ceifa/steamworks.js/actions/workflows/publish.yml)
-[![npm](https://img.shields.io/npm/v/steamworks.js.svg)](https://npmjs.com/package/steamworks.js)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Chat](https://img.shields.io/discord/663831597690257431?label=chat&logo=discord)](https://discord.gg/H6B7UE7fMY)
-
-# Steamworks.js
+# Steamworksjs
 
 A modern implementation of the Steamworks SDK for HTML/JS and NodeJS based applications.
-
-## Why
-
-I used [greenworks](https://github.com/greenheartgames/greenworks) for a long time and it's great, but I gave up for the following reasons.
-
-* It's not being maintained anymore.
-* It's not up to date.
-* It's not context-aware.
-* You have to build the binaries by yourself.
-* Don't have typescript definitions.
-* The API it's not trustful.
-* The API implement callbacks instead of return flags or promises.
-* I hate C++.
 
 ## API
 
@@ -57,8 +39,8 @@ const mainWindow = new BrowserWindow({
     webPreferences: {
         // ...
         contextIsolation: false,
-        nodeIntegration: true
-    }
+        nodeIntegration: true,
+    },
 })
 ```
 
