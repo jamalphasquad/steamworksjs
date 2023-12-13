@@ -1,0 +1,3 @@
+cargo:rerun-if-env-changed=STEAM_SDK_LOCATION
+cargo:rustc-link-search=D:\Js\steamworks.js\target\release\build\steamworks-sys-92dd86ca748471f1\out
+cargo:rustc-link-lib=dylib=steam_api64
