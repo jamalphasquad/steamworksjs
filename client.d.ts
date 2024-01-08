@@ -1,14 +1,15 @@
-export function init(appId: number): void
+export function init(appId?: number | undefined | null): void
 export function restartAppIfNecessary(appId: number): boolean
 export function runCallbacks(): void
 export interface PlayerSteamId {
-  steamId64: string
+  steamId64: bigint
   steamId32: string
   accountId: number
 }
 export namespace achievement {
   export function activate(achievement: string): boolean
   export function isActivated(achievement: string): boolean
+  export function clear(achievement: string): boolean
 }
 export namespace apps {
   export function isSubscribedApp(appId: number): boolean
@@ -27,8 +28,12 @@ export namespace apps {
   export function currentBetaName(): string | null
 }
 export namespace auth {
-  /** @param timeoutSeconds - The number of seconds to wait for the ticket to be validated. Default value is 10 seconds. */
-  export function getSessionTicket(timeoutSeconds?: number | undefined | null): Promise<Ticket>
+  /**
+   * @param steam_id64 - The 64bit SteamId.
+   * @param timeoutSeconds - The number of seconds to wait for the ticket to be validated. Default value is 10 seconds.
+   */
+  export function getSessionTicketWithSteamId(steamId64: bigint, timeoutSeconds?: number | undefined | null): Promise<Ticket>
+  export function getAuthTicketForWebApi(identity: string, timeoutSeconds?: number | undefined | null): Promise<Ticket>
   export class Ticket {
     cancel(): void
     getBytes(): Buffer
@@ -43,7 +48,9 @@ export namespace callback {
     LobbyDataUpdate = 4,
     LobbyChatUpdate = 5,
     P2PSessionRequest = 6,
-    P2PSessionConnectFail = 7
+    P2PSessionConnectFail = 7,
+    GameLobbyJoinRequested = 8,
+    MicroTxnAuthorizationResponse = 9
   }
   export function register<C extends keyof import('./callbacks').CallbackReturns>(steamCallback: C, handler: (value: import('./callbacks').CallbackReturns[C]) => void): Handle
   export class Handle {
@@ -82,8 +89,6 @@ export namespace localplayer {
   /** @returns the 2 digit ISO 3166-1-alpha-2 format country code which client is running in, e.g. "US" or "UK". */
   export function getIpCountry(): string
   export function setRichPresence(key: string, value?: string | undefined | null): void
-  export function activateGameOverlayToWebPage(url: string): void
-  export function activateGameOverlay(): void
 }
 export namespace matchmaking {
   export const enum LobbyType {
@@ -93,7 +98,7 @@ export namespace matchmaking {
     Invisible = 3
   }
   export function createLobby(lobbyType: LobbyType, maxMembers: number): Promise<Lobby>
-  export function joinJobby(lobbyId: bigint): Promise<Lobby>
+  export function joinLobby(lobbyId: bigint): Promise<Lobby>
   export function getLobbies(): Promise<Array<Lobby>>
   export class Lobby {
     id: bigint
@@ -110,7 +115,10 @@ export namespace matchmaking {
     deleteData(key: string): boolean
     /** Get an object containing all the lobby data */
     getFullData(): Record<string, string>
-    /** Merge current lobby data with provided data in a single batch */
+    /**
+     * Merge current lobby data with provided data in a single batch
+     * @returns true if all data was set successfully
+     */
     mergeFullData(data: Record<string, string>): boolean
   }
 }
@@ -145,10 +153,31 @@ export namespace networking {
      */
     ReliableWithBuffering = 3
   }
-  export function sendP2PPacket(steamId64: string, sendType: SendType, data: Buffer): boolean
+  export function sendP2PPacket(steamId64: bigint, sendType: SendType, data: Buffer): boolean
   export function isP2PPacketAvailable(): number
   export function readP2PPacket(size: number): P2PPacket
-  export function acceptP2PSession(steamId64: string): void
+  export function acceptP2PSession(steamId64: bigint): void
+}
+export namespace overlay {
+  export const enum Dialog {
+    Friends = 0,
+    Community = 1,
+    Players = 2,
+    Settings = 3,
+    OfficialGameGroup = 4,
+    Stats = 5,
+    Achievements = 6
+  }
+  export const enum StoreFlag {
+    None = 0,
+    AddToCart = 1,
+    AddToCartAndShow = 2
+  }
+  export function activateDialog(dialog: Dialog): void
+  export function activateDialogToUser(dialog: Dialog, steamId64: bigint): void
+  export function activateInviteDialog(lobbyId: bigint): void
+  export function activateToWebPage(url: string): void
+  export function activateToStore(appId: number, flag: StoreFlag): void
 }
 export namespace stats {
   export function getInt(name: string): number | null
@@ -156,10 +185,21 @@ export namespace stats {
   export function store(): boolean
   export function resetAll(achievementsToo: boolean): boolean
 }
+export namespace utils {
+  export function getAppId(): number
+  export function getServerRealTime(): number
+  export function isSteamRunningOnSteamDeck(): boolean
+}
 export namespace workshop {
   export interface UgcResult {
     itemId: bigint
     needsToAcceptAgreement: boolean
+  }
+  export const enum UgcItemVisibility {
+    Public = 0,
+    FriendsOnly = 1,
+    Private = 2,
+    Unlisted = 3
   }
   export interface UgcUpdate {
     title?: string
@@ -168,6 +208,7 @@ export namespace workshop {
     previewPath?: string
     contentPath?: string
     tags?: Array<string>
+    visibility?: UgcItemVisibility
   }
   export interface InstallInfo {
     folder: string
@@ -178,8 +219,14 @@ export namespace workshop {
     current: bigint
     total: bigint
   }
-  export function createItem(): Promise<UgcResult>
-  export function updateItem(itemId: bigint, updateDetails: UgcUpdate): Promise<UgcResult>
+  export interface UpdateProgress {
+    status: number
+    progress: bigint
+    total: bigint
+  }
+  export function createItem(appId?: number | undefined | null): Promise<UgcResult>
+  export function updateItem(itemId: bigint, updateDetails: UgcUpdate, appId?: number | undefined | null): Promise<UgcResult>
+  export function updateItemWithCallback(itemId: bigint, updateDetails: UgcUpdate, appId: number | undefined | null, successCallback: (data: { itemId: bigint; needsToAcceptAgreement: boolean }) => void, errorCallback: (err: any) => void, progressCallback: (data: { status: number; progress: bigint; total: bigint }) => void): void
   /**
    * Subscribe to a workshop item. It will be downloaded and installed as soon as possible.
    *
@@ -227,4 +274,38 @@ export namespace workshop {
    * {@link https://partner.steamgames.com/doc/api/ISteamUGC#DownloadItem}
    */
   export function download(itemId: bigint, highPriority: boolean): boolean
+  /**
+   * Get all subscribed workshop items.
+   * @returns an array of subscribed workshop item ids
+   */
+  export function getSubscribedItems(): Array<bigint>
+  export interface WorkshopItem {
+    publishedFileId: bigint
+    creatorAppId?: number
+    consumerAppId?: number
+    title: string
+    description: string
+    owner: PlayerSteamId
+    /** Time created in unix epoch seconds format */
+    timeCreated: number
+    /** Time updated in unix epoch seconds format */
+    timeUpdated: number
+    banned: boolean
+    acceptedForUse: boolean
+    tags: Array<string>
+    tagsTruncated: boolean
+    url: string
+    numUpvotes: number
+    numDownvotes: number
+    numChildren: number
+    previewUrl?: string
+  }
+  export interface WorkshopItemQuery {
+    cachedResponseMaxAge?: number
+    includeMetadata?: boolean
+    includeLongDescription?: boolean
+    language?: string
+  }
+  export function getItem(item: bigint, query?: WorkshopItemQuery | undefined | null): Promise<WorkshopItem | null>
+  export function getItems(items: Array<bigint>, query?: WorkshopItemQuery | undefined | null): Promise<Array<WorkshopItem | undefined | null>>
 }
